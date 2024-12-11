@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      body {
+        padding: 1rem;
+        max-width: 100vh;
+        margin: 0 auto; 
+      }
+      .title {
+        font-size: 1.4rem;
+      }
+      .posts {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+      .post {
+        padding: 1rem 0rem;
+      }
+    </style>
+  </head>
+  <body>
+      <div class="posts">
+        {{range .}}
+            <div class="post">
+              <a href="/post/{{.ID}}" class="title">{{.Title}}</a>
+              <div>{{.Created_at}}<div>
+            </div>
+        {{end}}
+      </div>
+  </body>
+</html>
