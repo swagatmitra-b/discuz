@@ -23,10 +23,11 @@
 	<li>{{.Content}}</li>
     <li>{{.Created_at}}</li>
     <a href="/reply/thread/{{.Post_id}}/{{.ID}}">Reply</a>
-	<li>Thread ID{{.ID}}</li>
+	<li id="{{.ID}}">Own ID{{.ID}}</li>
 	<li>Post Id {{.Post_id}}</li>
-    {{if .Thread_id.String}}
-        <li> thread id {{.Thread_id.String}}</li>
+  <a href="#{{.Root_id}}">Root Id {{.Root_id}}</a>
+    {{if .Parent_id.String}}
+        <li> Parent id {{.Parent_id.String}}</li>
     {{end}}
 	{{if .Children}}
 		<ul>
