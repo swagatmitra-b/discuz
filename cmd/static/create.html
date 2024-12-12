@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
+    <style>
+      .hidden {
+        display: none;
+      }
+    </style>
   </head>
   <body>
     <h1 class="font-bold text-lg">Create a Post</h1>
@@ -16,6 +21,7 @@
         <label for="content">Body</label>
         <textarea name="content" id=""></textarea>
       </div>
+        <input name="created_by" value="{{.}}" class="hidden"></input>
       <button type="submit">Post</button>
     </form>
   </body>

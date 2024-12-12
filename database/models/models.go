@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"time"
 )
 
 type Posts struct {
@@ -27,6 +28,12 @@ type User struct {
 	ID       string
 	Username string
 	Password string
+}
+
+type Session struct {
+	Token string
+	User string
+	Expires_at time.Time
 }
 
 type PostPage struct {

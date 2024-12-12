@@ -1,9 +1,14 @@
 package utils
 
 import (
+	"crypto/rand"
+	"discuz/database/models"
+	"encoding/base64"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
+	"time"
 )
 
 func RenderTemplate(w http.ResponseWriter, page string, data interface{}) {
@@ -15,4 +20,63 @@ func RenderTemplate(w http.ResponseWriter, page string, data interface{}) {
 	}
 
 	tmpl.Execute(w, data)
+}
+
+func GenerateToken(length int) string {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		log.Fatalf("Could not generate Token")
+	}
+	return base64.URLEncoding.EncodeToString(bytes)
+}
+
+func BuildTree(threads []*models.Threads) []*models.Threads {
+
+	treeMap := []*models.Threads{}
+
+	for _, thread := range threads {
+		if !thread.Parent_id.Valid {
+			treeMap = append(treeMap, thread)
+		} else {
+			SearchTree(treeMap, thread)
+		}
+	}
+
+	for _, thread := range treeMap {
+		thread.Root_id = thread.ID
+		AssignRootThread(thread, thread.ID)
+	}
+
+	return treeMap
+}
+
+func SearchTree(treeMap []*models.Threads, target *models.Threads) {
+	for _, thread := range treeMap {
+		if thread.ID == target.Parent_id.String {
+			thread.Children = append(thread.Children, target)
+			return
+		}
+		if len(thread.Children) == 0 {
+			continue
+		} else {
+			SearchTree(thread.Children, target)
+		}
+	}
+}
+
+func AssignRootThread(thread *models.Threads, id string) {
+	for _, thread := range thread.Children {
+		thread.Root_id = id
+		if len(thread.Children) != 0 {
+			AssignRootThread(thread, id)
+		}
+	}
+}
+
+func ParseDateString(datestring *string) {
+	t, err := time.Parse("2006-01-02T15:04:05Z", *datestring)
+	if err != nil {
+		return
+	}
+	*datestring = fmt.Sprintf("%d %s %d, %d:%d", t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute())
 }

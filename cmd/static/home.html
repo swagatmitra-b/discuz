@@ -25,10 +25,20 @@
   </head>
   <body>
       <div class="posts">
-        {{range .}}
+        {{if .User}} 
+         <span>{{.User}}</span>
+         <a href="/logout">Logout</a>
+        {{else}}
+        <div class="">
+          <a href="/login">Login</a>
+          <a href="/user">Register</a>
+        </div>
+        {{end}}
+        {{range .Posts}}
             <div class="post">
               <a href="/post/{{.ID}}" class="title">{{.Title}}</a>
               <div>{{.Created_at}}<div>
+              <div>{{.Created_by}}<div>
             </div>
         {{end}}
       </div>

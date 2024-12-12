@@ -12,6 +12,7 @@
       <li>{{.Post.Content}}</li>
       <li>{{.Post.ID}}</li>
       <li>{{.Post.Created_at}}</li>
+      <li>{{.Post.Created_by}}</li>
       <a href="/reply/post/{{.Post.ID}}">Reply</a>
       {{if .Threads}}
       <ul>
@@ -22,6 +23,7 @@
     <!-- {{block "node" .}}
 	<li>{{.Content}}</li>
     <li>{{.Created_at}}</li>
+    <li>{{.Created_by}}</li>
     <a href="/reply/thread/{{.Post_id}}/{{.ID}}">Reply</a>
 	<li id="{{.ID}}">Own ID{{.ID}}</li>
 	<li>Post Id {{.Post_id}}</li>

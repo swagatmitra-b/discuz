@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"discuz/database/models"
+	"discuz/utils"
 	"fmt"
 	"log"
 	"time"
@@ -47,7 +48,7 @@ func (driver *dbDriver) getPosts() ([]models.Posts, error) {
 	for rows.Next() {
 		post := models.Posts{}
 		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Created_at, &post.Created_by)
-		parseDateString(&post.Created_at)
+		utils.ParseDateString(&post.Created_at)
 
 		if err != nil {
 			return nil, err
@@ -65,26 +66,31 @@ func (driver *dbDriver) getPostTree(id string) (models.PostPage, error) {
 		Post: models.Posts{ID: id},
 	}
 
-	row := driver.db.QueryRow(`SELECT title, content, created_at from Posts WHERE ID = ?`, id)
+	row := driver.db.QueryRow(`SELECT title, content, created_at, created_by from Posts WHERE ID = ?`, id)
 
-	threadRows, err := driver.db.Query(`SELECT ID, parent_id, content, created_at from Threads WHERE post_id = ?`, id)
+	threadRows, err := driver.db.Query(`SELECT ID, parent_id, content, created_at, created_by from Threads WHERE post_id = ?`, id)
 
 	for threadRows.Next() {
 		thread := models.Threads{Post_id: id}
-		threadRows.Scan(&thread.ID, &thread.Parent_id, &thread.Content, &thread.Created_at)
-		parseDateString(&thread.Created_at)
+		threadRows.Scan(&thread.ID, &thread.Parent_id, &thread.Content, &thread.Created_at, &thread.Created_by)
+		utils.ParseDateString(&thread.Created_at)
 		postPage.Threads = append(postPage.Threads, &thread)
 	}
 
-	tree := buildTree(postPage.Threads)
+	tree := utils.BuildTree(postPage.Threads)
 	postPage.Threads = tree
 
 	if err != nil {
 		return postPage, err
 	}
 
-	err = row.Scan(&postPage.Post.Title, &postPage.Post.Content, &postPage.Post.Created_at)
-	parseDateString(&postPage.Post.Created_at)
+	err = row.Scan(&postPage.Post.Title, &postPage.Post.Content, &postPage.Post.Created_at, &postPage.Post.Created_by)
+
+	if err != nil {
+		return postPage, err
+	}
+
+	utils.ParseDateString(&postPage.Post.Created_at)
 
 	return postPage, nil
 }
@@ -92,9 +98,9 @@ func (driver *dbDriver) getPostTree(id string) (models.PostPage, error) {
 func (driver *dbDriver) getThread(id string) (models.Threads, error) {
 	thread := models.Threads{}
 
-	row := driver.db.QueryRow(`SELECT content, created_at from Threads WHERE ID = ?`, id)
+	row := driver.db.QueryRow(`SELECT content, created_at, created_by from Threads WHERE ID = ?`, id)
 
-	row.Scan(&thread.Content, &thread.Created_at)
+	row.Scan(&thread.Content, &thread.Created_at, &thread.Created_by)
 
 	return thread, nil
 }
@@ -102,35 +108,35 @@ func (driver *dbDriver) getThread(id string) (models.Threads, error) {
 func (driver *dbDriver) getPost(id string) (models.Posts, error) {
 	post := models.Posts{}
 
-	row := driver.db.QueryRow(`SELECT title, content, created_at from Posts WHERE ID = ?`, id)
+	row := driver.db.QueryRow(`SELECT title, content, created_at, created_by from Posts WHERE ID = ?`, id)
 
-	row.Scan(&post.Title, &post.Content, &post.Created_at)
+	row.Scan(&post.Title, &post.Content, &post.Created_at, &post.Created_by)
 
-	parseDateString(&post.Created_at)
+	utils.ParseDateString(&post.Created_at)
 
 	return post, nil
 }
 
-func (driver *dbDriver) createPost(title string, content string) error {
-	statement := `INSERT INTO Posts (title, content, created_at, created_by) values (?, ?, datetime('now'), 1)`
+func (driver *dbDriver) createPost(title, content, created_by string) error {
+	statement := `INSERT INTO Posts (title, content, created_at, created_by) values (?, ?, datetime('now'), ?)`
 
-	_, err := driver.db.Exec(statement, title, content)
+	_, err := driver.db.Exec(statement, title, content, created_by)
 
 	return err
 }
 
-func (driver *dbDriver) createThread(post_id, content, parent_id string) error {
+func (driver *dbDriver) createThread(post_id, content, parent_id, replied_by string) error {
 
-	topLevelThread := `INSERT INTO Threads (post_id, parent_id, content, created_at) values (?, NULL, ?, datetime('now'))`
-	followThread := `INSERT INTO Threads (post_id, parent_id, content, created_at) values (?, ?, ?, datetime('now'))`
+	topLevelThread := `INSERT INTO Threads (post_id, parent_id, content, created_at, created_by) values (?, NULL, ?, datetime('now'), ?)`
+	followThread := `INSERT INTO Threads (post_id, parent_id, content, created_at, created_by) values (?, ?, ?, datetime('now'), ?)`
 
 	if parent_id == "<nil>" {
 		fmt.Printf("top level")
-		_, err := driver.db.Exec(topLevelThread, post_id, content)
+		_, err := driver.db.Exec(topLevelThread, post_id, content, replied_by)
 		return err
 	} else {
 		fmt.Printf("follow")
-		_, err := driver.db.Exec(followThread, post_id, parent_id, content)
+		_, err := driver.db.Exec(followThread, post_id, parent_id, content, replied_by)
 		return err
 	}
 }
@@ -173,79 +179,53 @@ func (driver *dbDriver) authUser(username, password string) (string, error) {
 	return username, nil
 }
 
-func (driver *dbDriver) getUser(username string) (models.User, error) {
-	var user models.User
+func (driver *dbDriver) getUserBySessionToken(token string) (models.Session, error) {
+	var session models.Session
+	var expiryString string
 
-	row := driver.db.QueryRow(`SELECT id, username, password FROM Users WHERE username = ?`, username)
+	row := driver.db.QueryRow(`SELECT token, user, expires_at FROM Sessions WHERE token = ?`, token)
 
-	err := row.Scan(&user.ID, &user.Username, &user.Password)
+	err := row.Scan(&session.Token, &session.User, &expiryString)
 
 	if err != nil {
-		return models.User{}, err
+		log.Fatal("Error retrieving session:", err)
+		return models.Session{}, err
 	}
 
-	return user, nil
-}
+	expiry, err := time.Parse(time.RFC3339, expiryString)
 
-func buildTree(threads []*models.Threads) []*models.Threads {
-
-	treeMap := []*models.Threads{}
-
-	for _, thread := range threads {
-		if !thread.Parent_id.Valid {
-			treeMap = append(treeMap, thread)
-		} else {
-			searchTree(treeMap, thread)
-		}
-	}
-
-	for _, thread := range treeMap {
-		thread.Root_id = thread.ID
-		assignRootThread(thread, thread.ID)
-	}
-
-	return treeMap
-}
-
-func searchTree(treeMap []*models.Threads, target *models.Threads) {
-	for _, thread := range treeMap {
-		if thread.ID == target.Parent_id.String {
-			thread.Children = append(thread.Children, target)
-			return
-		}
-		if len(thread.Children) == 0 {
-			continue
-		} else {
-			searchTree(thread.Children, target)
-		}
-	}
-}
-
-func assignRootThread(thread *models.Threads, id string) {
-	for _, thread := range thread.Children {
-		thread.Root_id = id
-		if len(thread.Children) != 0 {
-			assignRootThread(thread, id)
-		}
-	}
-}
-
-func parseDateString(datestring *string) {
-	t, err := time.Parse("2006-01-02T15:04:05Z", *datestring)
 	if err != nil {
-		return
+		log.Fatal("Error parsing time:", err)
+		return models.Session{}, err
 	}
-	*datestring = fmt.Sprintf("%d %s %d, %d:%d", t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute())
+
+	session.Expires_at = expiry
+
+	if err != nil {
+		return models.Session{}, err
+	}
+
+	return session, nil
 }
 
-// func printTree(tree []*models.Threads) {
-// 	for _, thread := range tree {
-// 		fmt.Println(thread)
-// 		if len(thread.Children) == 0 {
-// 			fmt.Println(thread)
-// 			return
-// 		} else {
-// 			printTree(thread.Children)
-// 		}
-// 	}
-// }
+func (driver *dbDriver) createSession(token, username, expiry string) error {
+
+	_, err := driver.db.Exec(`INSERT INTO Sessions (token, user, expires_at) VALUES (?, ?, ?)`, token, username, expiry)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (driver *dbDriver) deleteSession(username string) bool {
+
+	_, err := driver.db.Exec(`DELETE FROM Sessions WHERE user = ?`, username)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return err == nil
+}

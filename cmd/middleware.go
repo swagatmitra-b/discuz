@@ -1,35 +1,53 @@
 package main
 
-// import (
-// 	"context"
-// 	"net/http"
-// )
+import (
+	"context"
+	"discuz/database/models"
+	"fmt"
+	"net/http"
+)
 
-// type ContextKey string
+type ContextKey string
 
-// const contextKey = ContextKey("user")
+const contextKey = ContextKey("user")
 
-// func (s *APIServer) authenticate(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		session, _ := s.session.Get(r, "auth")
-// 		userId, exists := session.Values["user"].(string)
-// 		http.SetCookie(w, &http.Cookie{
-// 			SameSite: http.SameSiteLaxMode,
-// 		})
+func (s *APIServer) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session_token")
+		if err != nil || cookie.Value == "" {
+			http.Error(w, "Unauthorized: Missing session token", http.StatusUnauthorized)
+			return
+		}
 
-// 		if !exists {
-// 			next.ServeHTTP(w, r)
-// 			return
-// 		}
+		sessionToken := cookie.Value
+		session, err := s.db.getUserBySessionToken(sessionToken)
+		if err != nil || session == (models.Session{}) {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		fmt.Println("FROM MIDDLEWARE", session.User)
 
-// 		user, err := s.db.getUser(userId)
+		ctx := context.WithValue(r.Context(), contextKey, session.User)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
 
-// 		if err != nil {
-// 			next.ServeHTTP(w, r)
-// 			return
-// 		}
+func (s *APIServer) UserContextMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session_token")
+		if err != nil || cookie.Value == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
 
-// 		ctx := context.WithValue(r.Context(), contextKey, user)
-// 		next.ServeHTTP(w, r.WithContext(ctx))
-// 	})
-// }
+		sessionToken := cookie.Value
+		session, err := s.db.getUserBySessionToken(sessionToken)
+		if err != nil || session == (models.Session{}) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), contextKey, session.User)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}

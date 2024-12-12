@@ -15,10 +15,12 @@
     <p>{{.Title}}</p>
     <p>{{.Content}}</p>
     <p>{{.Created_at}}</p>
+    <p>{{.Created_by}}</p>
     <form action="/reply" method="post">
       <div class="">
         <textarea name="content" id="" class="border-2 border-black"></textarea>
         <input type="text" name="post_id" value="{{.Post_id}}" class="hidden" />
+        <input type="text" name="replied_by" value="{{.Replied_by}}" class="hidden" />
         <input
           type="text"
           name="thread_id"
