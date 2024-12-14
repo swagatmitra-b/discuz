@@ -74,9 +74,25 @@ func AssignRootThread(thread *models.Threads, id string) {
 }
 
 func ParseDateString(datestring *string) {
+
+	ist, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		fmt.Println("Failed to load IST timezone:", err)
+		return
+	}
+
 	t, err := time.Parse("2006-01-02T15:04:05Z", *datestring)
 	if err != nil {
 		return
 	}
-	*datestring = fmt.Sprintf("%d %s %d, %d:%d", t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute())
+
+	t = t.In(ist)
+
+	var minute string
+
+	if t.Minute() < 10 {
+		minute = fmt.Sprintf("0%d", t.Minute())
+	}
+
+	*datestring = fmt.Sprintf("%d %s %d, %d:%s", t.Day(), t.Month(), t.Year(), t.Hour(), minute)
 }

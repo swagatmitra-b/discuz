@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"discuz/database/models"
-	"fmt"
 	"net/http"
 )
 
@@ -25,7 +24,6 @@ func (s *APIServer) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		fmt.Println("FROM MIDDLEWARE", session.User)
 
 		ctx := context.WithValue(r.Context(), contextKey, session.User)
 		next.ServeHTTP(w, r.WithContext(ctx))

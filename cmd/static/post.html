@@ -4,40 +4,76 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
+    <style>
+      .info {
+        display: flex;
+        gap: 1rem;
+      }
+      li,
+      ul {
+        list-style: none;
+      }
+      .reply {
+        padding: 1rem;
+        padding-left: 2rem;
+      }
+      .top-level {
+        padding: 1rem 0rem;
+      }
+      .info::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 1px;
+        background-color: black;
+      }
+      .info {
+        position: relative;
+        width: max-content;
+      }
+      .title {
+        font-size: 1.3rem;
+      }
+      .content {
+        padding: 1rem;
+      }
+    </style>
   </head>
   <body class="p-4">
     <a href="/">Back</a>
     <ul>
-      <li>{{.Post.Title}}</li>
-      <li>{{.Post.Content}}</li>
-      <li>{{.Post.ID}}</li>
-      <li>{{.Post.Created_at}}</li>
-      <li>{{.Post.Created_by}}</li>
+      <li class="title">{{.Post.Title}}</li>
+      <div class="info">
+        <li>{{.Post.Created_by}}</li>
+        <li>{{.Post.Created_at}}</li>
+      </div>
+      <li class="content">{{.Post.Content}}</li>
       <a href="/reply/post/{{.Post.ID}}">Reply</a>
       {{if .Threads}}
-      <ul>
+      <ul class="reply">
         {{range .Threads}} {{template "node" .}} {{end}}
       </ul>
       {{end}}
     </ul>
     <!-- {{block "node" .}}
-	<li>{{.Content}}</li>
-    <li>{{.Created_at}}</li>
-    <li>{{.Created_by}}</li>
-    <a href="/reply/thread/{{.Post_id}}/{{.ID}}">Reply</a>
-	<li id="{{.ID}}">Own ID{{.ID}}</li>
-	<li>Post Id {{.Post_id}}</li>
-  <a href="#{{.Root_id}}">Root Id {{.Root_id}}</a>
-    {{if .Parent_id.String}}
-        <li> Parent id {{.Parent_id.String}}</li>
-    {{end}}
-	{{if .Children}}
-		<ul>
-		{{range .Children}}
-			{{template "node" .}}
-		{{end}}
-		</ul>
-	{{end}}
-	{{end}} -->
+     <div class="top-level">
+      <div class="info">
+        <li>{{.Created_by}}</li>
+        <li class="underline">{{.Created_at}}</li>
+      </div>
+      <li>{{.Content}}</li>
+      <a href="/reply/thread/{{.Post_id}}/{{.ID}}">Reply</a>
+      <a href="#{{.Root_id}}">Root Thread</a>
+      {{if .Children}}
+        <ul class="reply">
+        {{range .Children}}
+          {{template "node" .}}
+        {{end}}
+        </ul>
+      {{end}}
+     </div>
+    {{end}} -->
   </body>
 </html>

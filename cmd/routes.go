@@ -13,6 +13,11 @@ type PageData struct {
 	User  string
 }
 
+type XsrfCreate struct {
+	User      string
+	XsrfToken string
+}
+
 func (s *APIServer) home(w http.ResponseWriter, r *http.Request) {
 	posts, err := s.db.getPosts()
 
@@ -23,7 +28,6 @@ func (s *APIServer) home(w http.ResponseWriter, r *http.Request) {
 	data := PageData{Posts: posts}
 
 	user, ok := r.Context().Value(contextKey).(string)
-	fmt.Println(user, ok)
 
 	if !ok {
 		data.User = ""
@@ -54,7 +58,16 @@ func (s *APIServer) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.RenderTemplate(w, "create", user)
+	xsrfCookie, err := r.Cookie("xsrf_token")
+	if err != nil || xsrfCookie.Value == "" {
+		http.Error(w, "Unauthorized: Missing xsrf token", http.StatusUnauthorized)
+		return
+	}
+
+	utils.RenderTemplate(w, "create", XsrfCreate{
+		User:      user,
+		XsrfToken: xsrfCookie.Value,
+	})
 }
 
 func (s *APIServer) replyPost(w http.ResponseWriter, r *http.Request) {
@@ -63,6 +76,12 @@ func (s *APIServer) replyPost(w http.ResponseWriter, r *http.Request) {
 
 	if !ok {
 		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	xsrfCookie, err := r.Cookie("xsrf_token")
+	if err != nil || xsrfCookie.Value == "" {
+		http.Error(w, "Unauthorized: Missing xsrf token", http.StatusUnauthorized)
 		return
 	}
 
@@ -76,6 +95,7 @@ func (s *APIServer) replyPost(w http.ResponseWriter, r *http.Request) {
 		Created_at: post.Created_at,
 		Created_by: post.Created_by,
 		Replied_by: user,
+		XsrfToken:  xsrfCookie.Value,
 	}
 
 	utils.RenderTemplate(w, "reply", reply)
@@ -85,15 +105,27 @@ func (s *APIServer) postReply(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
 	post_id := r.PostForm.Get("post_id")
 	thread_id := r.PostForm.Get("thread_id")
 	content := r.PostForm.Get("content")
 	replied_by := r.PostForm.Get("replied_by")
+	xsrf_token := r.PostForm.Get("xsrf_token")
 
 	s.db.createThread(post_id, content, thread_id, replied_by)
 
-	if err != nil {
-		http.Error(w, err.Error(), 500)
+	xsrfCookie, err := r.Cookie("xsrf_token")
+	if err != nil || xsrfCookie.Value == "" {
+		http.Error(w, "Unauthorized: Missing xsrf token", http.StatusUnauthorized)
+		return
+	}
+
+	if xsrfCookie.Value != xsrf_token {
+		http.Error(w, "Mismatch in xsrf tokens!", http.StatusUnauthorized)
 		return
 	}
 
@@ -114,6 +146,12 @@ func (s *APIServer) replyThread(w http.ResponseWriter, r *http.Request) {
 
 	parent, _ := s.db.getThread(thread_id)
 
+	xsrfCookie, err := r.Cookie("xsrf_token")
+	if err != nil || xsrfCookie.Value == "" {
+		http.Error(w, "Unauthorized: Missing xsrf token", http.StatusUnauthorized)
+		return
+	}
+
 	reply := Reply{
 		Post_id:    post_id,
 		Thread_id:  &thread_id,
@@ -121,6 +159,7 @@ func (s *APIServer) replyThread(w http.ResponseWriter, r *http.Request) {
 		Created_at: parent.Created_at,
 		Created_by: parent.Created_by,
 		Replied_by: user,
+		XsrfToken:  xsrfCookie.Value,
 	}
 
 	utils.RenderTemplate(w, "reply", reply)
@@ -138,6 +177,18 @@ func (s *APIServer) postCreate(w http.ResponseWriter, r *http.Request) {
 	title := r.PostForm.Get("title")
 	content := r.PostForm.Get("content")
 	creator := r.PostForm.Get("created_by")
+	xsrf_token := r.PostForm.Get("xsrf_token")
+
+	xsrfCookie, err := r.Cookie("xsrf_token")
+	if err != nil || xsrfCookie.Value == "" {
+		http.Error(w, "Unauthorized: Missing xsrf token", http.StatusUnauthorized)
+		return
+	}
+
+	if xsrfCookie.Value != xsrf_token {
+		http.Error(w, "Mismatch in xsrf tokens!", http.StatusUnauthorized)
+		return
+	}
 
 	s.db.createPost(title, content, creator)
 
@@ -188,8 +239,6 @@ func (s *APIServer) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(user)
-
 	sessionToken := utils.GenerateToken(32)
 	csrfToken := utils.GenerateToken(32)
 
@@ -203,7 +252,7 @@ func (s *APIServer) login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     "csrf_token",
+		Name:     "xsrf_token",
 		Value:    csrfToken,
 		HttpOnly: false,
 		SameSite: http.SameSiteLaxMode,
@@ -224,7 +273,6 @@ func (s *APIServer) login(w http.ResponseWriter, r *http.Request) {
 func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
 
 	user, ok := r.Context().Value(contextKey).(string)
-	fmt.Println(user, ok)
 
 	if !ok {
 		fmt.Println("no user in logout")
@@ -241,7 +289,7 @@ func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
 	})
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     "csrf_token",
+		Name:     "xsrf_token",
 		Value:    "",
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
@@ -256,6 +304,5 @@ func (s *APIServer) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("oi logout 2")
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }

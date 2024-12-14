@@ -18,6 +18,7 @@ type Reply struct {
 	Created_at string
 	Created_by string
 	Replied_by string
+	XsrfToken  string
 }
 
 func createAPIServer(addr string, db *dbDriver) APIServer {

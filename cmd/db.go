@@ -102,6 +102,8 @@ func (driver *dbDriver) getThread(id string) (models.Threads, error) {
 
 	row.Scan(&thread.Content, &thread.Created_at, &thread.Created_by)
 
+	utils.ParseDateString(&thread.Created_at)
+
 	return thread, nil
 }
 
@@ -131,11 +133,9 @@ func (driver *dbDriver) createThread(post_id, content, parent_id, replied_by str
 	followThread := `INSERT INTO Threads (post_id, parent_id, content, created_at, created_by) values (?, ?, ?, datetime('now'), ?)`
 
 	if parent_id == "<nil>" {
-		fmt.Printf("top level")
 		_, err := driver.db.Exec(topLevelThread, post_id, content, replied_by)
 		return err
 	} else {
-		fmt.Printf("follow")
 		_, err := driver.db.Exec(followThread, post_id, parent_id, content, replied_by)
 		return err
 	}
@@ -200,10 +200,6 @@ func (driver *dbDriver) getUserBySessionToken(token string) (models.Session, err
 	}
 
 	session.Expires_at = expiry
-
-	if err != nil {
-		return models.Session{}, err
-	}
 
 	return session, nil
 }

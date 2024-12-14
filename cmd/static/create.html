@@ -8,21 +8,27 @@
       .hidden {
         display: none;
       }
+      .input {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+      }
     </style>
   </head>
   <body>
     <h1 class="font-bold text-lg">Create a Post</h1>
     <form action="/create" method="post">
-      <div class="">
+      <div class="input">
         <label for="title">Title</label>
         <input type="text" name="title" />
       </div>
-      <div class="">
+      <div class="input">
         <label for="content">Body</label>
         <textarea name="content" id=""></textarea>
+        <button type="submit">Post</button>
       </div>
-        <input name="created_by" value="{{.}}" class="hidden"></input>
-      <button type="submit">Post</button>
+      <input name="created_by" value="{{.User}}" class="hidden" />
+      <input name="xsrf_token" value="{{.XsrfToken}}" class="hidden" />
     </form>
   </body>
 </html>
