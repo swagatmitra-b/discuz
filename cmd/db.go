@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"discuz/database/models"
 	"discuz/utils"
@@ -8,7 +9,9 @@ import (
 	"log"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	// _ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -17,7 +20,7 @@ type dbDriver struct {
 }
 
 func connectDB() (*dbDriver, error) {
-	driver, err := sql.Open("sqlite3", "./app.db")
+	driver, err := sql.Open("sqlite", "./app.db")
 
 	if err != nil {
 		log.Fatal("Failed to connect", err)
@@ -37,7 +40,7 @@ func connectDB() (*dbDriver, error) {
 
 func (driver *dbDriver) getPosts() ([]models.Posts, error) {
 
-	rows, err := driver.db.Query(`SELECT * FROM Posts`)
+	rows, err := driver.db.QueryContext(context.Background(), `SELECT * FROM Posts`)
 
 	if err != nil {
 		return nil, err
@@ -66,9 +69,9 @@ func (driver *dbDriver) getPostTree(id string) (models.PostPage, error) {
 		Post: models.Posts{ID: id},
 	}
 
-	row := driver.db.QueryRow(`SELECT title, content, created_at, created_by from Posts WHERE ID = ?`, id)
+	row := driver.db.QueryRowContext(context.Background(), `SELECT title, content, created_at, created_by from Posts WHERE ID = ?`, id)
 
-	threadRows, err := driver.db.Query(`SELECT ID, parent_id, content, created_at, created_by from Threads WHERE post_id = ?`, id)
+	threadRows, err := driver.db.QueryContext(context.Background(), `SELECT ID, parent_id, content, created_at, created_by from Threads WHERE post_id = ?`, id)
 
 	for threadRows.Next() {
 		thread := models.Threads{Post_id: id}
@@ -98,7 +101,7 @@ func (driver *dbDriver) getPostTree(id string) (models.PostPage, error) {
 func (driver *dbDriver) getThread(id string) (models.Threads, error) {
 	thread := models.Threads{}
 
-	row := driver.db.QueryRow(`SELECT content, created_at, created_by from Threads WHERE ID = ?`, id)
+	row := driver.db.QueryRowContext(context.Background(), `SELECT content, created_at, created_by from Threads WHERE ID = ?`, id)
 
 	row.Scan(&thread.Content, &thread.Created_at, &thread.Created_by)
 
@@ -110,7 +113,7 @@ func (driver *dbDriver) getThread(id string) (models.Threads, error) {
 func (driver *dbDriver) getPost(id string) (models.Posts, error) {
 	post := models.Posts{}
 
-	row := driver.db.QueryRow(`SELECT title, content, created_at, created_by from Posts WHERE ID = ?`, id)
+	row := driver.db.QueryRowContext(context.Background(), `SELECT title, content, created_at, created_by from Posts WHERE ID = ?`, id)
 
 	row.Scan(&post.Title, &post.Content, &post.Created_at, &post.Created_by)
 
@@ -122,7 +125,7 @@ func (driver *dbDriver) getPost(id string) (models.Posts, error) {
 func (driver *dbDriver) createPost(title, content, created_by string) error {
 	statement := `INSERT INTO Posts (title, content, created_at, created_by) values (?, ?, datetime('now'), ?)`
 
-	_, err := driver.db.Exec(statement, title, content, created_by)
+	_, err := driver.db.ExecContext(context.Background(), statement, title, content, created_by)
 
 	return err
 }
@@ -133,10 +136,10 @@ func (driver *dbDriver) createThread(post_id, content, parent_id, replied_by str
 	followThread := `INSERT INTO Threads (post_id, parent_id, content, created_at, created_by) values (?, ?, ?, datetime('now'), ?)`
 
 	if parent_id == "<nil>" {
-		_, err := driver.db.Exec(topLevelThread, post_id, content, replied_by)
+		_, err := driver.db.ExecContext(context.Background(), topLevelThread, post_id, content, replied_by)
 		return err
 	} else {
-		_, err := driver.db.Exec(followThread, post_id, parent_id, content, replied_by)
+		_, err := driver.db.ExecContext(context.Background(), followThread, post_id, parent_id, content, replied_by)
 		return err
 	}
 }
@@ -148,7 +151,7 @@ func (driver *dbDriver) createUser(username, password string) error {
 		return err
 	}
 
-	_, err2 := driver.db.Exec(`INSERT INTO Users (username, password) VALUES (?, ?)`, username, hash)
+	_, err2 := driver.db.ExecContext(context.Background(), `INSERT INTO Users (username, password) VALUES (?, ?)`, username, hash)
 
 	if err2 != nil {
 		return err
@@ -161,7 +164,7 @@ func (driver *dbDriver) authUser(username, password string) (string, error) {
 
 	var hashed []byte
 
-	row := driver.db.QueryRow(`SELECT password FROM Users WHERE username = ?`, username)
+	row := driver.db.QueryRowContext(context.Background(), `SELECT password FROM Users WHERE username = ?`, username)
 	err := row.Scan(&hashed)
 
 	if err != nil {
@@ -183,7 +186,7 @@ func (driver *dbDriver) getUserBySessionToken(token string) (models.Session, err
 	var session models.Session
 	var expiryString string
 
-	row := driver.db.QueryRow(`SELECT token, user, expires_at FROM Sessions WHERE token = ?`, token)
+	row := driver.db.QueryRowContext(context.Background(), `SELECT token, user, expires_at FROM Sessions WHERE token = ?`, token)
 
 	err := row.Scan(&session.Token, &session.User, &expiryString)
 
@@ -206,7 +209,7 @@ func (driver *dbDriver) getUserBySessionToken(token string) (models.Session, err
 
 func (driver *dbDriver) createSession(token, username, expiry string) error {
 
-	_, err := driver.db.Exec(`INSERT INTO Sessions (token, user, expires_at) VALUES (?, ?, ?)`, token, username, expiry)
+	_, err := driver.db.ExecContext(context.Background(), `INSERT INTO Sessions (token, user, expires_at) VALUES (?, ?, ?)`, token, username, expiry)
 
 	if err != nil {
 		return err
@@ -217,7 +220,7 @@ func (driver *dbDriver) createSession(token, username, expiry string) error {
 
 func (driver *dbDriver) deleteSession(username string) bool {
 
-	_, err := driver.db.Exec(`DELETE FROM Sessions WHERE user = ?`, username)
+	_, err := driver.db.ExecContext(context.Background(), `DELETE FROM Sessions WHERE user = ?`, username)
 
 	if err != nil {
 		fmt.Println(err)
