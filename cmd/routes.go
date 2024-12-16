@@ -248,7 +248,7 @@ func (s *APIServer) login(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(24 * time.Hour),
-		// Secure: true,
+		Secure: true,
 	})
 
 	http.SetCookie(w, &http.Cookie{
@@ -257,7 +257,7 @@ func (s *APIServer) login(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: false,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(1 * time.Hour),
-		// Secure: true,
+		Secure: true,
 	})
 
 	err = s.db.createSession(sessionToken, user, time.Now().Add(24*time.Hour).Format(time.RFC3339))
