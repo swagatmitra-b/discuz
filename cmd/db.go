@@ -9,7 +9,6 @@ import (
 	"log"
 	"time"
 
-	// _ "github.com/mattn/go-sqlite3"
 	_ "modernc.org/sqlite"
 
 	"golang.org/x/crypto/bcrypt"
@@ -40,7 +39,7 @@ func connectDB() (*dbDriver, error) {
 
 func (driver *dbDriver) getPosts() ([]models.Posts, error) {
 
-	rows, err := driver.db.QueryContext(context.Background(), `SELECT * FROM Posts`)
+	rows, err := driver.db.QueryContext(context.Background(), `SELECT * FROM Posts ORDER BY ID DESC`)
 
 	if err != nil {
 		return nil, err
