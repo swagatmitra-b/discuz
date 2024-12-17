@@ -14,14 +14,14 @@ func (s *APIServer) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_token")
 		if err != nil || cookie.Value == "" {
-			http.Error(w, "Unauthorized: Missing session token", http.StatusUnauthorized)
+			http.Error(w, "Unauthorized: Please login/register", http.StatusUnauthorized)
 			return
 		}
 
 		sessionToken := cookie.Value
 		session, err := s.db.getUserBySessionToken(sessionToken)
 		if err != nil || session == (models.Session{}) {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Unauthorized: Please login/register", http.StatusUnauthorized)
 			return
 		}
 

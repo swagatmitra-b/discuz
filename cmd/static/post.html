@@ -39,6 +39,9 @@
       .content {
         padding: 1rem;
       }
+      a {
+        padding-right: 0.5rem;
+      }
     </style>
   </head>
   <body class="p-4">
@@ -63,9 +66,9 @@
         <li>{{.Created_by}}</li>
         <li class="underline">{{.Created_at}}</li>
       </div>
-      <li>{{.Content}}</li>
-      <a href="/reply/thread/{{.Post_id}}/{{.ID}}">Reply</a>
-      <a href="#{{.Root_id}}">Root Thread</a>
+      <li id="{{.ID}}">{{.Content}}</li>
+      <a href="/reply/thread/{{.Post_id}}/{{.ID}}">reply</a>
+      <a href="#{{.Root_id}}">root</a>
       {{if .Children}}
         <ul class="reply">
         {{range .Children}}

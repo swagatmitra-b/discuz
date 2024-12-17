@@ -43,7 +43,7 @@ func (s *APIServer) post(w http.ResponseWriter, r *http.Request) {
 	postPage, err := s.db.getPostTree(id)
 
 	if err != nil {
-		http.Error(w, "invalid post", 500)
+		http.Error(w, "Invalid post", 500)
 	}
 
 	utils.RenderTemplate(w, "post", postPage)
@@ -54,13 +54,13 @@ func (s *APIServer) create(w http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(contextKey).(string)
 
 	if !ok {
-		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		http.Error(w, "Unauthorized: User not found", http.StatusUnauthorized)
 		return
 	}
 
 	xsrfCookie, err := r.Cookie("xsrf_token")
 	if err != nil || xsrfCookie.Value == "" {
-		http.Error(w, "Unauthorized: Missing xsrf token", http.StatusUnauthorized)
+		http.Error(w, "Unauthorized: Please ensure an active session.", http.StatusUnauthorized)
 		return
 	}
 
@@ -75,13 +75,13 @@ func (s *APIServer) replyPost(w http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(contextKey).(string)
 
 	if !ok {
-		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		http.Error(w, "Unauthorized: User not found", http.StatusUnauthorized)
 		return
 	}
 
 	xsrfCookie, err := r.Cookie("xsrf_token")
 	if err != nil || xsrfCookie.Value == "" {
-		http.Error(w, "Unauthorized: Missing xsrf token", http.StatusUnauthorized)
+		http.Error(w, "Unauthorized: Please ensure an active session", http.StatusUnauthorized)
 		return
 	}
 
@@ -120,12 +120,12 @@ func (s *APIServer) postReply(w http.ResponseWriter, r *http.Request) {
 
 	xsrfCookie, err := r.Cookie("xsrf_token")
 	if err != nil || xsrfCookie.Value == "" {
-		http.Error(w, "Unauthorized: Missing xsrf token", http.StatusUnauthorized)
+		http.Error(w, "Unauthorized: Please ensure an active session", http.StatusUnauthorized)
 		return
 	}
 
 	if xsrfCookie.Value != xsrf_token {
-		http.Error(w, "Mismatch in xsrf tokens!", http.StatusUnauthorized)
+		http.Error(w, "Oops! Something went wrong. Please try again", http.StatusUnauthorized)
 		return
 	}
 
@@ -137,7 +137,7 @@ func (s *APIServer) replyThread(w http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value(contextKey).(string)
 
 	if !ok {
-		http.Error(w, "User not found in context", http.StatusUnauthorized)
+		http.Error(w, "Unauthorized: User not found", http.StatusUnauthorized)
 		return
 	}
 
@@ -148,7 +148,7 @@ func (s *APIServer) replyThread(w http.ResponseWriter, r *http.Request) {
 
 	xsrfCookie, err := r.Cookie("xsrf_token")
 	if err != nil || xsrfCookie.Value == "" {
-		http.Error(w, "Unauthorized: Missing xsrf token", http.StatusUnauthorized)
+		http.Error(w, "Unauthorized: Please ensure an active session", http.StatusUnauthorized)
 		return
 	}
 
@@ -181,12 +181,12 @@ func (s *APIServer) postCreate(w http.ResponseWriter, r *http.Request) {
 
 	xsrfCookie, err := r.Cookie("xsrf_token")
 	if err != nil || xsrfCookie.Value == "" {
-		http.Error(w, "Unauthorized: Missing xsrf token", http.StatusUnauthorized)
+		http.Error(w, "Unauthorized: Please ensure an active session", http.StatusUnauthorized)
 		return
 	}
 
 	if xsrfCookie.Value != xsrf_token {
-		http.Error(w, "Mismatch in xsrf tokens!", http.StatusUnauthorized)
+		http.Error(w, "Oops! Something went wrong. Please try again", http.StatusUnauthorized)
 		return
 	}
 
