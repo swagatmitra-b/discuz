@@ -179,6 +179,11 @@ func (s *APIServer) postCreate(w http.ResponseWriter, r *http.Request) {
 	creator := r.PostForm.Get("created_by")
 	xsrf_token := r.PostForm.Get("xsrf_token")
 
+	if len(title) == 0 || len(content) == 0 {
+		http.Error(w, "Title or content cannot be empty", http.StatusUnauthorized)
+		return
+	}
+
 	xsrfCookie, err := r.Cookie("xsrf_token")
 	if err != nil || xsrfCookie.Value == "" {
 		http.Error(w, "Unauthorized: Please ensure an active session", http.StatusUnauthorized)
@@ -210,6 +215,11 @@ func (s *APIServer) postCreateUser(w http.ResponseWriter, r *http.Request) {
 
 	username := r.PostForm.Get("username")
 	password := r.PostForm.Get("password")
+
+	if len(password) == 0 {
+		http.Error(w, "Password cannot be empty", http.StatusUnauthorized)
+		return
+	}
 
 	s.db.createUser(username, password)
 
@@ -248,7 +258,7 @@ func (s *APIServer) login(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(24 * time.Hour),
-		Secure: true,
+		Secure:   true,
 	})
 
 	http.SetCookie(w, &http.Cookie{
@@ -257,7 +267,7 @@ func (s *APIServer) login(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: false,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(1 * time.Hour),
-		Secure: true,
+		Secure:   true,
 	})
 
 	err = s.db.createSession(sessionToken, user, time.Now().Add(24*time.Hour).Format(time.RFC3339))
